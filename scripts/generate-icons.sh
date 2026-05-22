@@ -24,6 +24,11 @@ for s in "${SIZES[@]}"; do
   echo "Generated $out"
 done
 
-# Ensure 1024 exists at destination.
-cp -f "$SRC" "$DEST_DIR/icon_1024.png"
-echo "Copied source to $DEST_DIR/icon_1024.png"
+# Ensure 1024 exists at destination (skip if source is already there).
+DEST_1024="$DEST_DIR/icon_1024.png"
+if [ "$(cd "$(dirname "$SRC")" && pwd)/$(basename "$SRC")" != "$(cd "$(dirname "$DEST_1024")" && pwd)/$(basename "$DEST_1024")" ]; then
+  cp -f "$SRC" "$DEST_1024"
+  echo "Copied source to $DEST_1024"
+else
+  echo "Source is already at $DEST_1024, skipping copy"
+fi
