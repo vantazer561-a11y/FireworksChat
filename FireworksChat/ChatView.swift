@@ -190,7 +190,7 @@ struct SettingsView: View {
                     TextField("Model ID", text: $model)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
-                    Text("По умолчанию: llama-v3p2-90b-vision-instruct (поддержка изображений)")
+                    Text("По умолчанию: kimi-k2p6")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

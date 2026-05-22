@@ -21,7 +21,7 @@ enum FireworksError: LocalizedError {
 
 struct FireworksAPI {
     var apiKey: String
-    var model: String = "accounts/fireworks/models/llama-v3p2-90b-vision-instruct"
+    var model: String = "accounts/fireworks/models/kimi-k2p6"
     var endpoint: URL = URL(string: "https://api.fireworks.ai/inference/v1/chat/completions")!
 
     func sendChat(messages: [ChatMessage]) async throws -> String {

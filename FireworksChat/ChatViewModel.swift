@@ -11,7 +11,7 @@ final class ChatViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     @AppStorage("fireworks_api_key") var apiKey: String = ""
-    @AppStorage("fireworks_model") var model: String = "accounts/fireworks/models/llama-v3p2-90b-vision-instruct"
+    @AppStorage("fireworks_model") var model: String = "accounts/fireworks/models/kimi-k2p6"
     @AppStorage("web_search_enabled") var webSearchEnabled: Bool = true
 
     func send() {
