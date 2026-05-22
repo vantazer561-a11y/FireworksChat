@@ -20,7 +20,7 @@ struct ChatView: View {
                 }
                 inputBar
             }
-            .navigationTitle("Fireworks Chat")
+            .navigationTitle("Tima Ai")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
