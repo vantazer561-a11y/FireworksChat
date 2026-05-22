@@ -24,6 +24,13 @@
     <true/>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Доступ к фотографиям нужен, чтобы прикреплять изображения к сообщениям ИИ-чата.</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Подключение к локальным API-эндпоинтам (например, OmniRoute) в вашей сети.</string>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>
