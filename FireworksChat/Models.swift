@@ -14,6 +14,6 @@ struct ChatMessage: Identifiable, Equatable {
     var image: UIImage?
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.text == rhs.text
     }
 }
