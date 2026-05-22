@@ -13,38 +13,36 @@ struct ChatView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                messagesList
-                if let usage = vm.lastUsage {
-                    HStack(spacing: 6) {
-                        Image(systemName: "info.circle").font(.caption2)
-                        Text("Токены: prompt \(usage.prompt) · ответ \(usage.completion) · всего \(usage.total)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        Spacer()
+            ZStack {
+                CyberGridBackground()
+                VStack(spacing: 0) {
+                    messagesList
+                    if let usage = vm.lastUsage {
+                        usageBar(usage)
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 4)
-                    .background(Color(.secondarySystemBackground).opacity(0.5))
+                    if let err = vm.errorMessage {
+                        errorBar(err)
+                    }
+                    inputBar
                 }
-                if let err = vm.errorMessage {
-                    Text(err)
-                        .font(.footnote)
-                        .foregroundColor(.red)
-                        .padding(.horizontal)
-                        .padding(.vertical, 6)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.red.opacity(0.08))
-                }
-                inputBar
             }
             .navigationTitle(vm.currentConversation.title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(CyberTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showingConversations = true }) {
                         Image(systemName: "line.3.horizontal")
+                            .foregroundColor(CyberTheme.cyan)
                     }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text(vm.currentConversation.title)
+                        .font(CyberTheme.mono(15, weight: .semibold))
+                        .foregroundStyle(CyberTheme.neonGradient)
+                        .lineLimit(1)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
@@ -79,6 +77,7 @@ struct ChatView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
+                            .foregroundColor(CyberTheme.magenta)
                     }
                 }
             }
@@ -94,18 +93,51 @@ struct ChatView: View {
             .sheet(isPresented: $showingShare) {
                 ShareSheet(items: shareItems)
             }
-            .accentColor(accentColor)
         }
         .navigationViewStyle(.stack)
-        .accentColor(accentColor)
-    }
-
-    private var accentColor: Color {
-        AccentPalette.color(for: vm.accentColorName)
+        .preferredColorScheme(.dark)
+        .accentColor(CyberTheme.cyan)
+        .tint(CyberTheme.cyan)
     }
 
     private var canRegenerate: Bool {
         !vm.isLoading && vm.messages.contains(where: { $0.role == .assistant })
+    }
+
+    // MARK: - Status bars
+
+    @ViewBuilder
+    private func usageBar(_ usage: TokenUsage) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "bolt.fill")
+                .font(.caption2)
+                .foregroundColor(CyberTheme.cyan)
+            Text("PROMPT \(usage.prompt) · OUT \(usage.completion) · TOTAL \(usage.total)")
+                .font(CyberTheme.mono(10, weight: .medium))
+                .foregroundColor(CyberTheme.textSecondary)
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
+        .background(CyberTheme.surface.opacity(0.6))
+        .overlay(Rectangle().frame(height: 1).foregroundColor(CyberTheme.cyan.opacity(0.3)), alignment: .top)
+    }
+
+    @ViewBuilder
+    private func errorBar(_ err: String) -> some View {
+        Text(err)
+            .font(CyberTheme.mono(11))
+            .foregroundColor(CyberTheme.magenta)
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(CyberTheme.magenta.opacity(0.08))
+            .overlay(
+                Rectangle()
+                    .frame(width: 2)
+                    .foregroundColor(CyberTheme.magenta),
+                alignment: .leading
+            )
     }
 
     // MARK: - Messages list
@@ -113,7 +145,7 @@ struct ChatView: View {
     private var messagesList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: 14) {
                     if vm.messages.isEmpty {
                         emptyState
                     }
@@ -136,12 +168,7 @@ struct ChatView: View {
                         .id(msg.id)
                     }
                     if vm.isLoading && (vm.messages.last?.role != .assistant || (vm.messages.last?.text.isEmpty ?? true)) {
-                        HStack {
-                            ProgressView()
-                            Text("Думаю…").foregroundColor(.secondary)
-                            Spacer()
-                        }
-                        .padding(.horizontal)
+                        thinkingIndicator
                     }
                 }
                 .padding(.vertical, 12)
@@ -173,14 +200,34 @@ struct ChatView: View {
         }
     }
 
+    private var thinkingIndicator: some View {
+        HStack(spacing: 8) {
+            PulseDot(color: CyberTheme.cyan)
+            PulseDot(color: CyberTheme.purple, delay: 0.2)
+            PulseDot(color: CyberTheme.magenta, delay: 0.4)
+            Text("PROCESSING…")
+                .font(CyberTheme.mono(11, weight: .semibold))
+                .foregroundColor(CyberTheme.textSecondary)
+                .tracking(2)
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 40))
-                .foregroundColor(accentColor)
+        VStack(spacing: 14) {
+            Image(systemName: "bolt.shield.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(CyberTheme.neonGradient)
+                .shadow(color: CyberTheme.cyan.opacity(0.6), radius: 12)
+            Text("TIMA AI")
+                .font(CyberTheme.mono(28, weight: .bold))
+                .foregroundStyle(CyberTheme.neonGradient)
+                .tracking(6)
             Text("Спросите что-нибудь или прикрепите изображение")
+                .font(CyberTheme.mono(12))
                 .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
+                .foregroundColor(CyberTheme.textSecondary)
                 .padding(.horizontal)
         }
         .padding(.top, 80)
@@ -204,42 +251,54 @@ struct ChatView: View {
                         .scaledToFill()
                         .frame(width: 56, height: 56)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .neonGlow(color: CyberTheme.cyan, radius: 4, cornerRadius: 8)
                     Spacer()
                     Button(action: { vm.selectedImage = nil }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(CyberTheme.magenta)
                     }
                 }
                 .padding(.horizontal)
                 .padding(.top, 6)
             }
-            HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 10) {
                 Button(action: { showingImagePicker = true }) {
-                    Image(systemName: "photo.on.rectangle")
+                    Image(systemName: "photo.on.rectangle.angled")
                         .font(.title2)
-                        .foregroundColor(accentColor)
+                        .foregroundColor(CyberTheme.cyan)
+                        .shadow(color: CyberTheme.cyan.opacity(0.6), radius: 4)
                 }
                 .disabled(vm.isLoading)
 
-                TextField("Сообщение", text: $vm.inputText, axis: .vertical)
+                TextField("", text: $vm.inputText, axis: .vertical)
+                    .placeholder(when: vm.inputText.isEmpty) {
+                        Text("> Введите запрос...")
+                            .font(CyberTheme.mono(14))
+                            .foregroundColor(CyberTheme.textSecondary.opacity(0.5))
+                    }
+                    .font(CyberTheme.mono(14))
+                    .foregroundColor(CyberTheme.textPrimary)
                     .lineLimit(1...5)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color(.secondarySystemBackground))
+                    .background(CyberTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .neonGlow(color: CyberTheme.cyan.opacity(0.5), radius: 4, lineWidth: 1, cornerRadius: 18)
 
                 if vm.isLoading {
                     Button(action: { vm.cancel() }) {
                         Image(systemName: "stop.circle.fill")
                             .font(.system(size: 32))
-                            .foregroundColor(.red)
+                            .foregroundColor(CyberTheme.magenta)
+                            .shadow(color: CyberTheme.magenta.opacity(0.8), radius: 8)
                     }
                 } else {
                     Button(action: { vm.send() }) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 32))
-                            .foregroundColor(canSend ? accentColor : .gray)
+                            .foregroundStyle(canSend ? CyberTheme.neonGradient : LinearGradient(colors: [.gray, .gray], startPoint: .top, endPoint: .bottom))
+                            .shadow(color: canSend ? CyberTheme.cyan.opacity(0.8) : .clear, radius: 8)
                     }
                     .disabled(!canSend)
                 }
@@ -247,12 +306,55 @@ struct ChatView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
-        .background(Color(.systemBackground))
+        .background(CyberTheme.background.opacity(0.95))
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundStyle(CyberTheme.neonGradient)
+                .opacity(0.6),
+            alignment: .top
+        )
     }
 
     private var canSend: Bool {
         !vm.isLoading &&
         (!vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || vm.selectedImage != nil)
+    }
+}
+
+// MARK: - Helpers
+
+/// Pulsing colored dot used in the "thinking" indicator.
+struct PulseDot: View {
+    let color: Color
+    var delay: Double = 0
+    @State private var scale: CGFloat = 0.6
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 8, height: 8)
+            .scaleEffect(scale)
+            .shadow(color: color.opacity(0.8), radius: 4)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.6).repeatForever().delay(delay)) {
+                    scale = 1.2
+                }
+            }
+    }
+}
+
+extension View {
+    /// Adds a placeholder view shown only when `shouldShow` is true.
+    func placeholder<Content: View>(
+        when shouldShow: Bool,
+        alignment: Alignment = .leading,
+        @ViewBuilder placeholder: () -> Content
+    ) -> some View {
+        ZStack(alignment: alignment) {
+            placeholder().opacity(shouldShow ? 1 : 0).padding(.leading, 14)
+            self
+        }
     }
 }
 
@@ -275,19 +377,21 @@ struct MessageBubble: View {
                         .scaledToFit()
                         .frame(maxWidth: 220, maxHeight: 220)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .neonGlow(color: glowColor, radius: 6, cornerRadius: 12)
                 }
                 if !message.text.isEmpty || isStreaming {
                     HStack(alignment: .bottom, spacing: 2) {
                         FormattedMessageView(text: message.text)
-                            .foregroundColor(textColor)
+                            .foregroundColor(CyberTheme.textPrimary)
                         if isStreaming {
-                            BlinkingCursor(color: textColor)
+                            BlinkingCursor(color: CyberTheme.cyan)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(bubbleColor)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(bubbleBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .neonGlow(color: glowColor.opacity(0.7), radius: 6, lineWidth: 1, cornerRadius: 16)
                     .contextMenu {
                         Button {
                             onCopy()
@@ -316,12 +420,17 @@ struct MessageBubble: View {
         .padding(.horizontal)
     }
 
-    private var bubbleColor: Color {
-        message.role == .user ? Color.accentColor : Color(.secondarySystemBackground)
+    @ViewBuilder
+    private var bubbleBackground: some View {
+        if message.role == .user {
+            CyberTheme.userBubbleGradient
+        } else {
+            CyberTheme.assistantBubbleGradient
+        }
     }
 
-    private var textColor: Color {
-        message.role == .user ? .white : .primary
+    private var glowColor: Color {
+        message.role == .user ? CyberTheme.magenta : CyberTheme.cyan
     }
 }
 
@@ -332,6 +441,7 @@ struct BlinkingCursor: View {
     var body: some View {
         Text("▍")
             .foregroundColor(color)
+            .shadow(color: color.opacity(0.8), radius: 4)
             .opacity(visible ? 1 : 0)
             .onAppear {
                 withAnimation(.easeInOut(duration: 0.6).repeatForever()) {
@@ -349,36 +459,52 @@ struct ConversationListView: View {
 
     var body: some View {
         NavigationView {
-            List {
-                ForEach(vm.conversations) { conv in
-                    Button {
-                        vm.selectConversation(conv.id)
-                        dismiss()
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(conv.title)
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
-                            Text(formatDate(conv.updatedAt))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            vm.deleteConversation(conv.id)
+            ZStack {
+                CyberGridBackground()
+                List {
+                    ForEach(vm.conversations) { conv in
+                        Button {
+                            vm.selectConversation(conv.id)
+                            dismiss()
                         } label: {
-                            Label("Удалить", systemImage: "trash")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(conv.title)
+                                    .font(CyberTheme.mono(14, weight: .semibold))
+                                    .foregroundColor(conv.id == vm.currentConversationID ? CyberTheme.cyan : CyberTheme.textPrimary)
+                                    .lineLimit(1)
+                                Text(formatDate(conv.updatedAt))
+                                    .font(CyberTheme.mono(10))
+                                    .foregroundColor(CyberTheme.textSecondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                        }
+                        .listRowBackground(
+                            (conv.id == vm.currentConversationID
+                                ? CyberTheme.surfaceAlt
+                                : CyberTheme.surface).opacity(0.7)
+                        )
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                vm.deleteConversation(conv.id)
+                            } label: {
+                                Label("Удалить", systemImage: "trash")
+                            }
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
-            .navigationTitle("Чаты")
+            .navigationTitle("ЧАТЫ")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(CyberTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Готово") { dismiss() }
+                        .foregroundColor(CyberTheme.cyan)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -386,10 +512,12 @@ struct ConversationListView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "square.and.pencil")
+                            .foregroundColor(CyberTheme.magenta)
                     }
                 }
             }
         }
+        .preferredColorScheme(.dark)
     }
 
     private func formatDate(_ date: Date) -> String {
@@ -409,118 +537,128 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section("API") {
-                    SecureField("API Key", text: $vm.apiKey)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
-                    TextField("Endpoint URL", text: $vm.endpointURL)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
-                        .keyboardType(.URL)
-                    Text("По умолчанию: Fireworks. Можно указать любой OpenAI-совместимый эндпоинт (например, локальный OmniRoute).")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Section("Модель") {
-                    TextField("Model ID", text: $vm.model)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
-                    Text("По умолчанию: kimi-k2p6")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Section("Системный промпт") {
-                    TextEditor(text: $vm.systemPrompt)
-                        .frame(minHeight: 80)
-                    Text("Задаёт характер ассистента. Применяется к каждому запросу.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Section("Параметры генерации") {
-                    HStack {
-                        Text("Temperature")
-                        Spacer()
-                        Text(String(format: "%.2f", vm.temperature))
-                            .foregroundColor(.secondary)
+            ZStack {
+                CyberGridBackground()
+                Form {
+                    Section {
+                        SecureField("API Key", text: $vm.apiKey)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .font(CyberTheme.mono(13))
+                        TextField("Endpoint URL", text: $vm.endpointURL)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .keyboardType(.URL)
+                            .font(CyberTheme.mono(13))
+                    } header: {
+                        Text("API").foregroundColor(CyberTheme.cyan)
+                    } footer: {
+                        Text("По умолчанию: Fireworks. Можно указать любой OpenAI-совместимый эндпоинт.")
+                            .foregroundColor(CyberTheme.textSecondary)
                     }
-                    Slider(value: $vm.temperature, in: 0...2, step: 0.05)
+                    .listRowBackground(CyberTheme.surface.opacity(0.8))
 
-                    HStack {
-                        Text("Max tokens")
-                        Spacer()
-                        Text("\(vm.maxTokens)")
-                            .foregroundColor(.secondary)
+                    Section {
+                        TextField("Model ID", text: $vm.model)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .font(CyberTheme.mono(13))
+                    } header: {
+                        Text("МОДЕЛЬ").foregroundColor(CyberTheme.magenta)
+                    } footer: {
+                        Text("По умолчанию: kimi-k2p6")
+                            .foregroundColor(CyberTheme.textSecondary)
                     }
-                    Slider(
-                        value: Binding(
-                            get: { Double(vm.maxTokens) },
-                            set: { vm.maxTokens = Int($0) }
-                        ),
-                        in: 256...8192,
-                        step: 128
-                    )
-                }
+                    .listRowBackground(CyberTheme.surface.opacity(0.8))
 
-                Section("Интернет") {
-                    Toggle("Искать в интернете", isOn: $vm.webSearchEnabled)
-                    Text("Перед ответом приложение ищет свежий контекст через DuckDuckGo и Wikipedia.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                    Section {
+                        TextEditor(text: $vm.systemPrompt)
+                            .frame(minHeight: 80)
+                            .font(CyberTheme.mono(13))
+                            .scrollContentBackground(.hidden)
+                            .background(Color.clear)
+                    } header: {
+                        Text("СИСТЕМНЫЙ ПРОМПТ").foregroundColor(CyberTheme.cyan)
+                    } footer: {
+                        Text("Задаёт характер ассистента. Применяется к каждому запросу.")
+                            .foregroundColor(CyberTheme.textSecondary)
+                    }
+                    .listRowBackground(CyberTheme.surface.opacity(0.8))
 
-                Section("Интерфейс") {
-                    Toggle("Виброотклик", isOn: $vm.hapticsEnabled)
-                    Picker("Акцентный цвет", selection: $vm.accentColorName) {
-                        ForEach(AccentPalette.all, id: \.name) { item in
-                            HStack {
-                                Circle().fill(item.color).frame(width: 14, height: 14)
-                                Text(item.label)
-                            }
-                            .tag(item.name)
+                    Section {
+                        HStack {
+                            Text("Temperature")
+                            Spacer()
+                            Text(String(format: "%.2f", vm.temperature))
+                                .font(CyberTheme.mono(12))
+                                .foregroundColor(CyberTheme.cyan)
                         }
-                    }
-                }
+                        Slider(value: $vm.temperature, in: 0...2, step: 0.05)
+                            .tint(CyberTheme.cyan)
 
-                Section {
-                    Link("Получить API-ключ Fireworks",
-                         destination: URL(string: "https://fireworks.ai/account/api-keys")!)
+                        HStack {
+                            Text("Max tokens")
+                            Spacer()
+                            Text("\(vm.maxTokens)")
+                                .font(CyberTheme.mono(12))
+                                .foregroundColor(CyberTheme.magenta)
+                        }
+                        Slider(
+                            value: Binding(
+                                get: { Double(vm.maxTokens) },
+                                set: { vm.maxTokens = Int($0) }
+                            ),
+                            in: 256...8192,
+                            step: 128
+                        )
+                        .tint(CyberTheme.magenta)
+                    } header: {
+                        Text("ПАРАМЕТРЫ ГЕНЕРАЦИИ").foregroundColor(CyberTheme.magenta)
+                    }
+                    .listRowBackground(CyberTheme.surface.opacity(0.8))
+
+                    Section {
+                        Toggle("Искать в интернете", isOn: $vm.webSearchEnabled)
+                            .tint(CyberTheme.cyan)
+                    } header: {
+                        Text("ИНТЕРНЕТ").foregroundColor(CyberTheme.cyan)
+                    } footer: {
+                        Text("Перед ответом ищется свежий контекст через DuckDuckGo и Wikipedia.")
+                            .foregroundColor(CyberTheme.textSecondary)
+                    }
+                    .listRowBackground(CyberTheme.surface.opacity(0.8))
+
+                    Section {
+                        Toggle("Виброотклик", isOn: $vm.hapticsEnabled)
+                            .tint(CyberTheme.magenta)
+                    } header: {
+                        Text("ИНТЕРФЕЙС").foregroundColor(CyberTheme.magenta)
+                    }
+                    .listRowBackground(CyberTheme.surface.opacity(0.8))
+
+                    Section {
+                        Link("Получить API-ключ Fireworks",
+                             destination: URL(string: "https://fireworks.ai/account/api-keys")!)
+                            .foregroundColor(CyberTheme.cyan)
+                    }
+                    .listRowBackground(CyberTheme.surface.opacity(0.8))
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
-            .navigationTitle("Настройки")
+            .navigationTitle("НАСТРОЙКИ")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(CyberTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Готово") { dismiss() }
+                        .foregroundColor(CyberTheme.cyan)
                 }
             }
         }
-    }
-}
-
-// MARK: - Accent palette
-
-enum AccentPalette {
-    struct Item {
-        let name: String
-        let label: String
-        let color: Color
-    }
-
-    static let all: [Item] = [
-        Item(name: "orange", label: "Оранжевый", color: .orange),
-        Item(name: "blue", label: "Синий", color: .blue),
-        Item(name: "purple", label: "Фиолетовый", color: .purple),
-        Item(name: "green", label: "Зелёный", color: .green),
-        Item(name: "pink", label: "Розовый", color: .pink),
-        Item(name: "red", label: "Красный", color: .red)
-    ]
-
-    static func color(for name: String) -> Color {
-        all.first(where: { $0.name == name })?.color ?? .orange
+        .preferredColorScheme(.dark)
     }
 }
 
